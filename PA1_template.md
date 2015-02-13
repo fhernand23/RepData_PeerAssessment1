@@ -81,7 +81,6 @@ median(s$total_steps)
 
 
 ```r
-library(dplyr)    
 # filter NA
 f <- filter(data, is.na(steps)==0)
 # group data by day
@@ -121,39 +120,16 @@ sum(is.na(data$steps))
 
 
 ```r
-library(plyr)
-```
-
-```
-## Warning: package 'plyr' was built under R version 3.1.2
-```
-
-```
-## -------------------------------------------------------------------------
-## You have loaded plyr after dplyr - this is likely to cause problems.
-## If you need functions from both plyr and dplyr, please load plyr first, then dplyr:
-## library(plyr); library(dplyr)
-## -------------------------------------------------------------------------
-## 
-## Attaching package: 'plyr'
-## 
-## The following objects are masked from 'package:dplyr':
-## 
-##     arrange, count, desc, failwith, id, mutate, rename, summarise,
-##     summarize
-```
-
-```r
-impute.mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
 ## fill with mean of interval
-data_fill <- ddply(data, ~ interval, transform, steps = impute.mean(steps))
+data_fill <- data %>%
+                    group_by(interval) %>% 
+                    mutate(steps= ifelse(is.na(steps), mean(steps, na.rm=TRUE), steps))
 ```
 
 3. Generate histogram, mean and median
 
 
 ```r
-library(dplyr)    
 # filter NA
 f <- filter(data_fill, is.na(steps)==0)
 # group data by day
@@ -176,7 +152,7 @@ mean(s$total_steps)
 ```
 
 ```
-## [1] 656737.5
+## [1] 10766.19
 ```
 
 Median
@@ -186,7 +162,51 @@ median(s$total_steps)
 ```
 
 ```
-## [1] 656737.5
+## [1] 10766.19
 ```
 
+The values are almost the same as calculated in excluding NA. The median differs a little.
+
 ## Are there differences in activity patterns between weekdays and weekends?
+
+1. Create a new factor variable in the dataset with two levels - "weekday" and "weekend"
+
+
+```r
+## set locale in english to avoid local day names
+Sys.setlocale("LC_TIME", "English")
+```
+
+```
+## [1] "English_United States.1252"
+```
+
+```r
+data_fill$weekday_type <- 
+    ifelse(weekdays(strptime(data_fill$date, format = "%Y-%m-%d"), abbreviate = TRUE) %in% c("Sat", "Sun"), 
+		"weekend", 
+		"weekday")
+```
+
+2. Plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis)
+
+
+```r
+gp <- group_by(data_fill, weekday_type, interval)
+sp <- summarise(gp, avg_steps=mean(steps))
+## plot
+library(ggplot2)
+```
+
+```
+## Warning: package 'ggplot2' was built under R version 3.1.2
+```
+
+```r
+qplot(interval, avg_steps, data=sp, facets=.~weekday_type, geom=c('line')) +
+    labs(x = "Interval", y = "Number of steps")
+```
+
+![](PA1_template_files/figure-html/unnamed-chunk-15-1.png) 
+
+
